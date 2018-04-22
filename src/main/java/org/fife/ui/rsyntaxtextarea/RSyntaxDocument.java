@@ -12,6 +12,7 @@ package org.fife.ui.rsyntaxtextarea;
 import java.awt.event.ActionEvent;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.ArrayList;
 import java.util.Iterator;
 
 import javax.swing.Action;
@@ -23,6 +24,7 @@ import javax.swing.text.Segment;
 import org.fife.ui.rsyntaxtextarea.modes.AbstractMarkupTokenMaker;
 import org.fife.ui.rtextarea.RDocument;
 import org.fife.util.DynamicIntArray;
+import org.fife.util.DynamicTokenArray;
 
 
 /**
@@ -67,15 +69,6 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 	 */
 	private String syntaxStyle;
 
-	/**
-	 * Array of values representing the "last token type" on each line.  This
-	 * is used in cases such as multi-line comments:  if the previous line
-	 * ended with an (unclosed) multi-line comment, we can use this knowledge
-	 * and start the current line's syntax highlighting in multi-line comment
-	 * state.
-	 */
-	protected transient DynamicIntArray lastTokensOnLines;
-
 	private transient int lastLine = -1;
 	private transient Token cachedTokenList;
 	private transient int useCacheCount = 0;
@@ -111,154 +104,10 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 	 */
 	public RSyntaxDocument(TokenMakerFactory tmf, String syntaxStyle) {
 		putProperty(tabSizeAttribute, Integer.valueOf(5));
-		lastTokensOnLines = new DynamicIntArray(400);
-		lastTokensOnLines.add(Token.NULL); // Initial (empty) line.
 		s = new Segment();
 		setTokenMakerFactory(tmf);
 		setSyntaxStyle(syntaxStyle);
 	}
-
-
-	/**
-	 * Alerts all listeners to this document of an insertion.  This is
-	 * overridden so we can update our syntax highlighting stuff.<p>
-	 * The syntax highlighting stuff has to be here instead of in
-	 * <code>insertUpdate</code> because <code>insertUpdate</code> is not
-	 * called by the undo/redo actions, but this method is.
-	 *
-	 * @param e The change.
-	 */
-	@Override
-	protected void fireInsertUpdate(DocumentEvent e) {
-
-		cachedTokenList = null;
-
-		/*
-		 * Now that the text is actually inserted into the content and
-		 * element structure, we can update our token elements and "last
-		 * tokens on lines" structure.
-		 */
-
-		Element lineMap = getDefaultRootElement();
-		DocumentEvent.ElementChange change = e.getChange(lineMap);
-		Element[] added = change==null ? null : change.getChildrenAdded();
-
-		int numLines = lineMap.getElementCount();
-		int line = lineMap.getElementIndex(e.getOffset());
-		int previousLine = line - 1;
-		int previousTokenType = (previousLine>-1 ?
-					lastTokensOnLines.get(previousLine) : Token.NULL);
-
-		// If entire lines were added...
-		if (added!=null && added.length>0) {
-
-			Element[] removed = change.getChildrenRemoved();
-			int numRemoved = removed!=null ? removed.length : 0;
-
-			int endBefore = line + added.length - numRemoved;
-			//System.err.println("... adding lines: " + line + " - " + (endBefore-1));
-			//System.err.println("... ... added: " + added.length + ", removed:" + numRemoved);
-			for (int i=line; i<endBefore; i++) {
-
-				setSharedSegment(i); // Loads line i's text into s.
-
-				int tokenType = tokenMaker.getLastTokenTypeOnLine(s, previousTokenType);
-				lastTokensOnLines.add(i, tokenType);
-				//System.err.println("--------- lastTokensOnLines.size() == " + lastTokensOnLines.getSize());
-
-				previousTokenType = tokenType;
-
-			} // End of for (int i=line; i<endBefore; i++).
-
-			// Update last tokens for lines below until they stop changing.
-			updateLastTokensBelow(endBefore, numLines, previousTokenType);
-
-		} // End of if (added!=null && added.length>0).
-
-		// Otherwise, text was inserted on a single line...
-		else {
-
-			// Update last tokens for lines below until they stop changing.
-			updateLastTokensBelow(line, numLines, previousTokenType);
-
-		} // End of else.
-
-		// Let all listeners know about the insertion.
-		super.fireInsertUpdate(e);
-
-	}
-
-
-	/**
-	 * This method is called AFTER the content has been inserted into the
-	 * document and the element structure has been updated.<p>
-	 * The syntax-highlighting updates need to be done here (as opposed to
-	 * an override of <code>postRemoveUpdate</code>) as this method is called
-	 * in response to undo/redo events, whereas <code>postRemoveUpdate</code>
-	 * is not.<p>
-	 * Now that the text is actually inserted into the content and element
-	 * structure, we can update our token elements and "last tokens on
-	 * lines" structure.
-	 *
-	 * @param chng The change that occurred.
-	 * @see #removeUpdate
-	 */
-	@Override
-	protected void fireRemoveUpdate(DocumentEvent chng) {
-
-		cachedTokenList =  null;
-		Element lineMap = getDefaultRootElement();
-		int numLines = lineMap.getElementCount();
-
-		DocumentEvent.ElementChange change = chng.getChange(lineMap);
-		Element[] removed = change==null ? null : change.getChildrenRemoved();
-
-		// If entire lines were removed...
-		if (removed!=null && removed.length>0) {
-
-			int line = change.getIndex();	// First line entirely removed.
-			int previousLine = line - 1;	// Line before that.
-			int previousTokenType = (previousLine>-1 ?
-					lastTokensOnLines.get(previousLine) : Token.NULL);
-
-			Element[] added = change.getChildrenAdded();
-			int numAdded = added==null ? 0 : added.length;
-
-			// Remove the cached last-token values for the removed lines.
-			int endBefore = line + removed.length - numAdded;
-			//System.err.println("... removing lines: " + line + " - " + (endBefore-1));
-			//System.err.println("... added: " + numAdded + ", removed: " + removed.length);
-
-			lastTokensOnLines.removeRange(line, endBefore); // Removing values for lines [line-(endBefore-1)].
-			//System.err.println("--------- lastTokensOnLines.size() == " + lastTokensOnLines.getSize());
-
-			// Update last tokens for lines below until they've stopped changing.
-			updateLastTokensBelow(line, numLines, previousTokenType);
-
-		} // End of if (removed!=null && removed.size()>0).
-
-		// Otherwise, text was removed from just one line...
-		else {
-
-			int line = lineMap.getElementIndex(chng.getOffset());
-			if (line>=lastTokensOnLines.getSize()) {
-				return;	// If we're editing the last line in a document...
-			}
-
-			int previousLine = line - 1;
-			int previousTokenType = (previousLine>-1 ?
-					lastTokensOnLines.get(previousLine) : Token.NULL);
-			//System.err.println("previousTokenType for line : " + previousLine + " is " + previousTokenType);
-			// Update last tokens for lines below until they've stopped changing.
-			updateLastTokensBelow(line, numLines, previousTokenType);
-
-		}
-
-		// Let all of our listeners know about the removal.
-		super.fireRemoveUpdate(chng);
-
-	}
-
 
 	/**
 	 * Returns the closest {@link TokenTypes "standard" token type} for a given
@@ -312,19 +161,6 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 	public boolean getLanguageIsMarkup() {
 		return tokenMaker.isMarkupLanguage();
 	}
-
-
-	/**
-	 * Returns the token type of the last token on the given line.
-	 *
-	 * @param line The line to inspect.
-	 * @return The token type of the last token on the specified line.  If
-	 *         the line is invalid, an exception is thrown.
-	 */
-	public int getLastTokenTypeOnLine(int line) {
-		return lastTokensOnLines.get(line);
-	}
-
 
 	/**
 	 * Returns the text to place at the beginning and end of a
@@ -402,35 +238,34 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 	public final Token getTokenListForLine(int line) {
 
 		tokenRetrievalCount++;
-		if (line==lastLine && cachedTokenList!=null) {
-			if (DEBUG_TOKEN_CACHING) {
-				useCacheCount++;
-				System.err.println("--- Using cached line; ratio now: " +
-						useCacheCount + "/" + tokenRetrievalCount);
-			}
-			return cachedTokenList;
-		}
-		lastLine = line;
 
 		Element map = getDefaultRootElement();
 		Element elem = map.getElement(line);
-		int startOffset = elem.getStartOffset();
-		//int endOffset = (line==map.getElementCount()-1 ? elem.getEndOffset() - 1:
-		//									elem.getEndOffset() - 1);
-		int endOffset = elem.getEndOffset() - 1; // Why always "-1"?
+		int startOffset = map.getStartOffset();
+		int lineOffset = elem.getStartOffset();
+		int endOffset = map.getEndOffset() - 1; // Why always "-1"?
 		try {
 			getText(startOffset,endOffset-startOffset, s);
 		} catch (BadLocationException ble) {
 			ble.printStackTrace();
 			return null;
 		}
-		int initialTokenType = line==0 ? Token.NULL :
-								getLastTokenTypeOnLine(line-1);
 
-		//return tokenMaker.getTokenList(s, initialTokenType, startOffset);
-		cachedTokenList = tokenMaker.getTokenList(s, initialTokenType, startOffset);
-		return cachedTokenList;
-
+		Token list = tokenMaker.getTokenList(s, null, startOffset);
+		Token token = list;
+		/*System.out.println("------------------------------");
+		while (token != null) {
+			System.out.println("");
+			System.out.println(token);
+			System.out.println("OFFSET:" + token.getOffset());
+			System.out.println("TEXT:" + token.getTextOffset());
+			System.out.println("LINE:" + elem.getStartOffset());
+			System.out.println(token.containsPosition(elem.getStartOffset()));
+			token = token.getNextToken();
+		}*/
+		Token returntoken = (list != null) ? ((list.getType() == Token.NULL) ? list : RSyntaxUtilities.getTokenAtOffset(list, lineOffset)) : null;
+		//System.out.println(returntoken);
+		return returntoken;
 	}
 
 
@@ -494,7 +329,6 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 		// Handle other transient stuff
 		this.s = new Segment();
 		int lineCount = getDefaultRootElement().getElementCount();
-		lastTokensOnLines = new DynamicIntArray(lineCount);
 		setSyntaxStyle(syntaxStyle); // Actually install (transient) TokenMaker
 
 	}
@@ -545,6 +379,7 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 	 */
 	public void setSyntaxStyle(String styleKey) {
 		tokenMaker = tokenMakerFactory.getTokenMaker(styleKey);
+		tokenMaker.setDocument(this);
 		updateSyntaxHighlightingInformation();
 		this.syntaxStyle = styleKey;
 	}
@@ -561,6 +396,7 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 	 */
 	public void setSyntaxStyle(TokenMaker tokenMaker) {
 		this.tokenMaker = tokenMaker;
+		tokenMaker.setDocument(this);
 		updateSyntaxHighlightingInformation();
 		this.syntaxStyle = "text/unknown"; // TODO: Make me public?
 	}
@@ -577,75 +413,6 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 			TokenMakerFactory.getDefaultInstance();
 	}
 
-
-	/**
-	 * Loops through the last-tokens-on-lines array from a specified point
-	 * onward, updating last-token values until they stop changing.  This
-	 * should be called when lines are updated/inserted/removed, as doing
-	 * so may cause lines below to change color.
-	 *
-	 * @param line The first line to check for a change in last-token value.
-	 * @param numLines The number of lines in the document.
-	 * @param previousTokenType The last-token value of the line just before
-	 *        <code>line</code>.
-	 * @return The last line that needs repainting.
-	 */
-	private int updateLastTokensBelow(int line, int numLines, int previousTokenType) {
-
-		int firstLine = line;
-
-		// Loop through all lines past our starting point.  Update even the last
-		// line's info, even though there aren't any lines after it that depend
-		// on it changing for them to be changed, as its state may be used
-		// elsewhere in the library.
-		int end = numLines;
-		//System.err.println("--- end==" + end + " (numLines==" + numLines + ")");
-		while (line<end) {
-
-			setSharedSegment(line); // Sets s's text to that of line 'line' in the document.
-
-			int oldTokenType = lastTokensOnLines.get(line);
-			int newTokenType = tokenMaker.getLastTokenTypeOnLine(s, previousTokenType);
-			//System.err.println("---------------- line " + line + "; oldTokenType==" +
-			//		oldTokenType + ", newTokenType==" + newTokenType + ", s=='" + s + "'");
-
-			// If this line's end-token value didn't change, stop here.  Note
-			// that we're saying this line needs repainting; this is because
-			// the beginning of this line did indeed change color, but the
-			// end didn't.
-			if (oldTokenType==newTokenType) {
-				//System.err.println("... ... ... repainting lines " + firstLine + "-" + line);
-				fireChangedUpdate(new DefaultDocumentEvent(firstLine, line, DocumentEvent.EventType.CHANGE));
-				return line;
-			}
-
-			// If the line's end-token value did change, update it and
-			// keep going.
-			// NOTE: "setUnsafe" is okay here as the bounds checking was
-			// already done in lastTokensOnLines.get(line) above.
-			lastTokensOnLines.setUnsafe(line, newTokenType);
-			previousTokenType = newTokenType;
-			line++;
-
-		} // End of while (line<numLines).
-
-		// If any lines had their token types changed, fire a changed update
-		// for them.  The view will repaint the area covered by the lines.
-		// FIXME:  We currently cheat and send the line range that needs to be
-		// repainted as the "offset and length" of the change, since this is
-		// what the view needs.  We really should send the actual offset and
-		// length.
-		if (line>firstLine) {
-			//System.err.println("... ... ... repainting lines " + firstLine + "-" + line);
-			fireChangedUpdate(new DefaultDocumentEvent(firstLine, line,
-								DocumentEvent.EventType.CHANGE));
-		}
-
-		return line;
-
-	}
-
-
 	/**
 	 * Updates internal state information; e.g. the "last tokens on lines"
 	 * data.  After this, a changed update is fired to let listeners know that
@@ -660,16 +427,6 @@ public class RSyntaxDocument extends RDocument implements Iterable<Token>,
 		// is the same.
 		Element map = getDefaultRootElement();
 		int numLines = map.getElementCount();
-		int lastTokenType = Token.NULL;
-		for (int i=0; i<numLines; i++) {
-			setSharedSegment(i);
-			lastTokenType = tokenMaker.getLastTokenTypeOnLine(s, lastTokenType);
-			lastTokensOnLines.set(i, lastTokenType);
-		}
-
-		// Clear our token cache to force re-painting
-		lastLine = -1;
-		cachedTokenList = null;
 
 		// Let everybody know that syntax styles have (probably) changed.
 		fireChangedUpdate(new DefaultDocumentEvent(

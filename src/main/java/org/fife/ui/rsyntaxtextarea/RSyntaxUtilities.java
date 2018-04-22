@@ -424,6 +424,145 @@ public final class RSyntaxUtilities implements SwingConstants {
 
 	}
 
+	public static Token getMatchingBracketToken(RSyntaxDocument doc,
+												   Token inToken, Token tokenList) {
+
+		try {
+
+			// Actually position just BEFORE caret.
+			int caretPosition = inToken.getTextOffset() - 1;
+			char bracket = 0;
+
+			// If the caret was at offset 0, we can't check "to its left."
+			if (caretPosition>=0) {
+				bracket  = doc.charAt(caretPosition);
+			}
+
+			// Try to match a bracket "to the right" of the caret if one
+			// was not found on the left.
+			int index = BRACKETS.indexOf(bracket);
+			if (index==-1 && caretPosition<doc.getLength()-1) {
+				bracket = doc.charAt(++caretPosition);
+			}
+
+			// First, see if the char was a bracket (one of "{[()]}").
+			if (index==-1) {
+				index = BRACKETS.indexOf(bracket);
+				if (index==-1) {
+					return null;
+				}
+			}
+
+			// If it was, then make sure this bracket isn't sitting in
+			// the middle of a comment or string.  If it isn't, then
+			// initialize some stuff so we can continue on.
+			char bracketMatch;
+			boolean goForward;
+			Element map = doc.getDefaultRootElement();
+			int curLine = map.getElementIndex(caretPosition);
+			int startLine = curLine;
+			Element line = map.getElement(curLine);
+			int start = line.getStartOffset();
+			int end = line.getEndOffset();
+			Token token = inToken;
+			// All brackets are always returned as "separators."
+			if (token.getType()!=Token.SEPARATOR) {
+				return null;
+			}
+			int languageIndex = token.getLanguageIndex();
+			if (index<3) { // One of "{[("
+				goForward = true;
+				bracketMatch = BRACKETS.charAt(index + 3);
+			}
+			else { // One of ")]}"
+				goForward = false;
+				bracketMatch = BRACKETS.charAt(index - 3);
+			}
+
+			// End just before the found bracket since we're sure
+			// we're not in a comment.
+			end = caretPosition;// - 1;
+			int numEmbedded = 0;
+			boolean haveTokenList = false;
+			Token t2;
+
+			while (true) {
+
+				Segment seg = new Segment();
+				doc.getText(start,end-start, seg);
+				int segOffset = seg.offset;
+				int iStart = segOffset + seg.count - 1;
+
+				for (int i=iStart; i>=segOffset; i--) {
+
+					char ch = seg.array[i];
+
+					if (ch==bracket) {
+						if (!haveTokenList) {
+							if (curLine == startLine) {
+								token = tokenList;
+							} else {
+								token = doc.getTokenListForLine(curLine);
+							}
+							haveTokenList = true;
+						}
+
+						int offset = start + (i-segOffset);
+						t2 = RSyntaxUtilities.getTokenAtOffset(token, offset);
+						if (t2.getType()==Token.SEPARATOR &&
+							token.getLanguageIndex()==languageIndex) {
+							numEmbedded++;
+						}
+					}
+
+					else if (ch==bracketMatch) {
+						if (!haveTokenList) {
+							if (curLine == startLine) {
+								token = tokenList;
+							} else {
+								token = doc.getTokenListForLine(curLine);
+							}
+							haveTokenList = true;
+						}
+
+						int offset = start + (i-segOffset);
+						t2 = RSyntaxUtilities.getTokenAtOffset(token, offset);
+						if (t2.getType()==Token.SEPARATOR &&
+							token.getLanguageIndex()==languageIndex) {
+							if (numEmbedded==0) {
+								return t2;
+							}
+							numEmbedded--;
+						}
+					}
+
+				}
+
+				// Bail out if we've gone through all lines and
+				// haven't found the match.
+				if (--curLine==-1) {
+					return null;
+				}
+
+				// Otherwise, get ready for going through the
+				// next line.
+				haveTokenList = false;
+				line = map.getElement(curLine);
+				start = line.getStartOffset();
+				end = line.getEndOffset();
+
+			} // End of while (true).
+
+
+		} catch (Exception ble) {
+			// Shouldn't ever happen.
+			//ble.printStackTrace();
+		}
+
+		// Something went wrong...
+		return null;
+
+	}
 
 	/**
 	 * Returns the location of the bracket paired with the one at the current
@@ -487,7 +626,7 @@ public final class RSyntaxUtilities implements SwingConstants {
 			Token token = doc.getTokenListForLine(curLine);
 			token = RSyntaxUtilities.getTokenAtOffset(token, caretPosition);
 			// All brackets are always returned as "separators."
-			if (token.getType()!=Token.SEPARATOR) {
+			if (token == null || token.getType()!=Token.SEPARATOR) {
 				return input;
 			}
 			int languageIndex = token.getLanguageIndex();
@@ -539,7 +678,7 @@ public final class RSyntaxUtilities implements SwingConstants {
 							}
 							int offset = start + (i-segOffset);
 							token = RSyntaxUtilities.getTokenAtOffset(token, offset);
-							if (token.getType()==Token.SEPARATOR &&
+							if (token != null && token.getType()==Token.SEPARATOR &&
 									token.getLanguageIndex()==languageIndex) {
 								if (numEmbedded==0) {
 									if (textArea.isCodeFoldingEnabled() &&
@@ -642,9 +781,9 @@ public final class RSyntaxUtilities implements SwingConstants {
 
 			} // End of else.
 
-		} catch (BadLocationException ble) {
+		} catch (Exception ble) {
 			// Shouldn't ever happen.
-			ble.printStackTrace();
+			//ble.printStackTrace();
 		}
 
 		// Something went wrong...
@@ -1043,12 +1182,16 @@ return c.getLineStartOffset(line);
 	 * @see #getTokenAtOffset(RSyntaxDocument, int)
 	 */
 	public static Token getTokenAtOffset(Token tokenList, int offset) {
-		for (Token t=tokenList; t!=null && t.isPaintable(); t=t.getNextToken()){
-			if (t.containsPosition(offset)) {
-				return t;
+		Token match = null;
+		for (Token t=tokenList; t!=null; t=t.getNextToken()){
+			/*if (!t.isPaintable() && t.getNextToken() != null) {
+				continue;
+			}*/
+			if (t.containsPosition(offset) && (match == null || (match != null && match.getType() == Token.NULL))) {
+				match = t;
 			}
 		}
-		return null;
+		return match;
 	}
 
 

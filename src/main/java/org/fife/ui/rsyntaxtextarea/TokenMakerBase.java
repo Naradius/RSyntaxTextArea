@@ -35,9 +35,6 @@ public abstract class TokenMakerBase implements TokenMaker {
 	 */
 	protected TokenImpl previousToken;
 
-	/**
-	 * The factory that gives us our tokens to use.
-	 */
 	private TokenFactory tokenFactory;
 
 	/**
@@ -56,13 +53,15 @@ public abstract class TokenMakerBase implements TokenMaker {
 	 */
 	private int languageIndex;
 
+	private RSyntaxDocument document;
+
 
 	/**
 	 * Constructor.
 	 */
 	public TokenMakerBase() {
 		firstToken = currentToken = previousToken = null;
-		tokenFactory = new DefaultTokenFactory();
+		setTokenFactory(new DefaultTokenFactory());
 	}
 
 
@@ -72,11 +71,11 @@ public abstract class TokenMakerBase implements TokenMaker {
 	@Override
 	public void addNullToken() {
 		if (firstToken==null) {
-			firstToken = tokenFactory.createToken();
+			firstToken = getTokenFactory().createToken();
 			currentToken = firstToken;
 		}
 		else {
-			TokenImpl next = tokenFactory.createToken();
+			TokenImpl next = getTokenFactory().createToken();
 			currentToken.setNextToken(next);
 			previousToken = currentToken;
 			currentToken = next;
@@ -126,12 +125,12 @@ public abstract class TokenMakerBase implements TokenMaker {
 						int startOffset, boolean hyperlink) {
 
 		if (firstToken==null) {
-			firstToken = tokenFactory.createToken(array, start, end,
+			firstToken = getTokenFactory().createToken(array, start, end,
 									startOffset, tokenType);
 			currentToken = firstToken; // previous token is still null.
 		}
 		else {
-			TokenImpl next = tokenFactory.createToken(array, start,end,
+			TokenImpl next = getTokenFactory().createToken(array, start,end,
 													startOffset, tokenType);
 			currentToken.setNextToken(next);
 			previousToken = currentToken;
@@ -214,23 +213,22 @@ public abstract class TokenMakerBase implements TokenMaker {
 		return languageIndex;
 	}
 
-
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
-	public int getLastTokenTypeOnLine(Segment text, int initialTokenType) {
-
+	public Token getLastTokenOnLine(Segment text, Token initialToken) {
 		// Last parameter doesn't matter if we're not painting.
-		Token t = getTokenList(text, initialTokenType, 0);
+		Token t = getTokenList(text, initialToken, 0);
 
 		while (t.getNextToken()!=null) {
 			t = t.getNextToken();
 		}
 
-		return t.getType();
-
+		return t;
 	}
+
+
 
 
 	/**
@@ -312,12 +310,12 @@ public abstract class TokenMakerBase implements TokenMaker {
 	 * Deletes the linked list of tokens so we can begin anew.  This should
 	 * never have to be called by the programmer, as it is automatically
 	 * called whenever the user calls
-	 * {@link #getLastTokenTypeOnLine(Segment, int)} or
-	 * {@link #getTokenList(Segment, int, int)}.
+	 * {@link #getLastTokenOnLine(Segment, Token)} or
+	 * {@link #getTokenList(Segment, Token, int)}.
 	 */
 	protected void resetTokenList() {
 		firstToken = currentToken = previousToken = null;
-		tokenFactory.resetAllTokens();
+		getTokenFactory().resetAllTokens();
 	}
 
 
@@ -337,4 +335,22 @@ public abstract class TokenMakerBase implements TokenMaker {
 	}
 
 
+	/**
+	 * The factory that gives us our tokens to use.
+	 */
+	protected TokenFactory getTokenFactory() {
+		return tokenFactory;
+	}
+
+	protected void setTokenFactory(TokenFactory tokenFactory) {
+		this.tokenFactory = tokenFactory;
+	}
+
+	public RSyntaxDocument getDocument() {
+		return document;
+	}
+
+	public void setDocument(RSyntaxDocument document) {
+		this.document = document;
+	}
 }

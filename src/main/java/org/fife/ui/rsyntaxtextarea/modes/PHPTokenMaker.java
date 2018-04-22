@@ -24697,14 +24697,14 @@ public class PHPTokenMaker extends AbstractMarkupTokenMaker {
 	 * subclasses so they can correctly implement syntax highlighting.
 	 *
 	 * @param text The text from which to get tokens.
-	 * @param initialTokenType The token type we should start with.
+	 * @param initialToken The token type we should start with.
 	 * @param startOffset The offset into the document at which
 	 *        <code>text</code> starts.
 	 * @return The first <code>Token</code> in a linked list representing
 	 *         the syntax highlighted text.
 	 */
 	@Override
-	public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
+	public Token getTokenList(Segment text, Token initialToken, int startOffset) {
 
 		resetTokenList();
 		this.offsetShift = -text.offset + startOffset;
@@ -24714,7 +24714,7 @@ public class PHPTokenMaker extends AbstractMarkupTokenMaker {
 
 		// Start off in the proper state.
 		int state = Token.NULL;
-		switch (initialTokenType) {
+		switch (initialToken.getType()) {
 			case Token.MARKUP_COMMENT:
 				state = COMMENT;
 				break;
@@ -24804,48 +24804,48 @@ public class PHPTokenMaker extends AbstractMarkupTokenMaker {
 				validJSString = false;
 				break;
 			default:
-				if (initialTokenType<-1024) { // INTERNAL_IN_PHPxxx - phpInState
-					int main = -(-initialTokenType & 0x0000ff00);
+				if (initialToken.getType()<-1024) { // INTERNAL_IN_PHPxxx - phpInState
+					int main = -(-initialToken.getType() & 0x0000ff00);
 					switch (main) {
 						default: // Should never happen
 						case INTERNAL_IN_PHP:
 							state = PHP;
 							languageIndex = LANG_INDEX_PHP;
-							phpInState = -initialTokenType&0xff;
-							phpInLangIndex = (-initialTokenType&0x00ff0000)>>16;
+							phpInState = -initialToken.getType()&0xff;
+							phpInLangIndex = (-initialToken.getType()&0x00ff0000)>>16;
 							break;
 						case INTERNAL_IN_PHP_MLC:
 							state = PHP_MLC;
 							languageIndex = LANG_INDEX_PHP;
-							phpInState = -initialTokenType&0xff;
-							phpInLangIndex = (-initialTokenType&0x00ff0000)>>16;
+							phpInState = -initialToken.getType()&0xff;
+							phpInLangIndex = (-initialToken.getType()&0x00ff0000)>>16;
 							break;
 						case INTERNAL_IN_PHP_STRING:
 							state = PHP_STRING;
 							languageIndex = LANG_INDEX_PHP;
-							phpInState = -initialTokenType&0xff;
-							phpInLangIndex = (-initialTokenType&0x00ff0000)>>16;
+							phpInState = -initialToken.getType()&0xff;
+							phpInLangIndex = (-initialToken.getType()&0x00ff0000)>>16;
 							break;
 						case INTERNAL_IN_PHP_CHAR:
 							state = PHP_CHAR;
 							languageIndex = LANG_INDEX_PHP;
-							phpInState = -initialTokenType&0xff;
-							phpInLangIndex = (-initialTokenType&0x00ff0000)>>16;
+							phpInState = -initialToken.getType()&0xff;
+							phpInLangIndex = (-initialToken.getType()&0x00ff0000)>>16;
 							break;
 						case INTERNAL_CSS_STRING:
 							state = CSS_STRING;
 							languageIndex = LANG_INDEX_CSS;
-							cssPrevState = -initialTokenType&0xff;
+							cssPrevState = -initialToken.getType()&0xff;
 							break;
 						case INTERNAL_CSS_CHAR:
 							state = CSS_CHAR_LITERAL;
 							languageIndex = LANG_INDEX_CSS;
-							cssPrevState = -initialTokenType&0xff;
+							cssPrevState = -initialToken.getType()&0xff;
 							break;
 						case INTERNAL_CSS_MLC:
 							state = CSS_C_STYLE_COMMENT;
 							languageIndex = LANG_INDEX_CSS;
-							cssPrevState = -initialTokenType&0xff;
+							cssPrevState = -initialToken.getType()&0xff;
 							break;
 					}
 				}

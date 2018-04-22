@@ -1510,21 +1510,21 @@ public class ActionScriptTokenMaker extends AbstractJFlexCTokenMaker {
 	 * subclasses so they can correctly implement syntax highlighting.
 	 *
 	 * @param text The text from which to get tokens.
-	 * @param initialTokenType The token type we should start with.
+	 * @param initialToken The token type we should start with.
 	 * @param startOffset The offset into the document at which
 	 *        <code>text</code> starts.
 	 * @return The first <code>Token</code> in a linked list representing
 	 *         the syntax highlighted text.
 	 */
 	@Override
-	public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
+	public Token getTokenList(Segment text, Token initialToken, int startOffset) {
 
 		resetTokenList();
 		this.offsetShift = -text.offset + startOffset;
 
 		// Start off in the proper state.
 		int state = Token.NULL;
-		switch (initialTokenType) {
+		switch (initialToken.getType()) {
 			case Token.COMMENT_MULTILINE:
 				state = MLC;
 				start = text.offset;

@@ -680,14 +680,14 @@ public class CSSTokenMaker extends AbstractJFlexCTokenMaker {
 	 * subclasses so they can correctly implement syntax highlighting.
 	 *
 	 * @param text The text from which to get tokens.
-	 * @param initialTokenType The token type we should start with.
+	 * @param initialToken The token type we should start with.
 	 * @param startOffset The offset into the document at which
 	 *        <code>text</code> starts.
 	 * @return The first <code>Token</code> in a linked list representing
 	 *         the syntax highlighted text.
 	 */
 	@Override
-	public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
+	public Token getTokenList(Segment text, Token initialToken, int startOffset) {
 
 		resetTokenList();
 		this.offsetShift = -text.offset + startOffset;
@@ -695,7 +695,7 @@ public class CSSTokenMaker extends AbstractJFlexCTokenMaker {
 
 		// Start off in the proper state.
 		int state = YYINITIAL;
-		switch (initialTokenType) {
+		switch (initialToken.getType()) {
 			case Token.LITERAL_STRING_DOUBLE_QUOTE:
 				state = CSS_STRING;
 				break;
@@ -712,8 +712,8 @@ public class CSSTokenMaker extends AbstractJFlexCTokenMaker {
 				state = CSS_VALUE;
 				break;
 			default:
-				if (initialTokenType<-1024) {
-					int main = -(-initialTokenType & 0xffffff00);
+				if (initialToken.getType()<-1024) {
+					int main = -(-initialToken.getType() & 0xffffff00);
 					switch (main) {
 						default: // Should never happen
 						case INTERNAL_CSS_STRING:
@@ -726,7 +726,7 @@ public class CSSTokenMaker extends AbstractJFlexCTokenMaker {
 							state = CSS_C_STYLE_COMMENT;
 							break;
 					}
-					cssPrevState = -initialTokenType&0xff;
+					cssPrevState = -initialToken.getType()&0xff;
 				}
 				else {
 					state = YYINITIAL;

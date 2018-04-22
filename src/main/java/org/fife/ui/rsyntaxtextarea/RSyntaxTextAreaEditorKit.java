@@ -1558,7 +1558,7 @@ public class RSyntaxTextAreaEditorKit extends RTextAreaEditorKit {
 
 		}
 
-		private void possiblyCloseCurlyBrace(RSyntaxTextArea textArea,
+		protected void possiblyCloseCurlyBrace(RSyntaxTextArea textArea,
 											String leadingWS) {
 
 			RSyntaxDocument doc = (RSyntaxDocument)textArea.getDocument();

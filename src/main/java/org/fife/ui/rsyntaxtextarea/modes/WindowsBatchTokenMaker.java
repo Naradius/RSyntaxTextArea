@@ -241,12 +241,12 @@ public class WindowsBatchTokenMaker extends AbstractTokenMaker {
 	 * Returns a list of tokens representing the given text.
 	 *
 	 * @param text The text to break into tokens.
-	 * @param startTokenType The token with which to start tokenizing.
+	 * @param startToken The token with which to start tokenizing.
 	 * @param startOffset The offset at which the line of tokens begins.
 	 * @return A linked list of tokens representing <code>text</code>.
 	 */
 	@Override
-	public Token getTokenList(Segment text, int startTokenType, final int startOffset) {
+	public Token getTokenList(Segment text, Token startToken, final int startOffset) {
 
 		resetTokenList();
 
@@ -262,7 +262,7 @@ public class WindowsBatchTokenMaker extends AbstractTokenMaker {
 		int newStartOffset = startOffset - offset;
 
 		currentTokenStart = offset;
-		currentTokenType  = startTokenType;
+		currentTokenType  = startToken.getType();
 
 //beginning:
 		for (int i=offset; i<end; i++) {

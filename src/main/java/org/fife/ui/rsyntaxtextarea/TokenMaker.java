@@ -26,6 +26,8 @@ import javax.swing.text.Segment;
  */
 public interface TokenMaker {
 
+	public void setDocument(RSyntaxDocument document);
+	public RSyntaxDocument getDocument();
 
 	/**
 	 * Adds a null token to the end of the current linked list of tokens.
@@ -33,7 +35,6 @@ public interface TokenMaker {
 	 * token on the current line is NOT a multi-line token.
 	 */
 	public void addNullToken();
-
 
 	/**
 	 * Adds the token specified to the current linked list of tokens.
@@ -47,7 +48,6 @@ public interface TokenMaker {
 	 */
 	public void addToken(char[] array, int start, int end, int tokenType,
 							int startOffset);
-
 
 	/**
 	 * Returns the closest {@link TokenTypes "standard" token type} for a given
@@ -83,13 +83,13 @@ public interface TokenMaker {
 	 * for doing syntax highlighting.
 	 *
 	 * @param text The line of tokens to examine.
-	 * @param initialTokenType The token type to start with (i.e., the value
-	 *        of <code>getLastTokenTypeOnLine</code> for the line before
+	 * @param initialToken The token to start with (i.e., the value
+	 *        of <code>getLastTokenOnLine</code> for the line before
 	 *        <code>text</code>).
 	 * @return The last token on this line's type, or {@link Token#NULL}
 	 *         if the line was completed.
 	 */
-	public int getLastTokenTypeOnLine(Segment text, int initialTokenType);
+	public Token getLastTokenOnLine(Segment text, Token initialToken);
 
 
 	/**
@@ -157,14 +157,13 @@ public interface TokenMaker {
 	 * subclasses so they can correctly implement syntax highlighting.
 	 *
 	 * @param text The text from which to get tokens.
-	 * @param initialTokenType The token type we should start with.
+	 * @param initialToken The token we should start with.
 	 * @param startOffset The offset into the document at which
 	 *        <code>text</code> starts.
 	 * @return The first <code>Token</code> in a linked list representing
 	 *         the syntax highlighted text.
 	 */
-	public Token getTokenList(Segment text, int initialTokenType,
-											int startOffset);
+	public Token getTokenList(Segment text, Token initialToken, int startOffset);
 
 
 	/**

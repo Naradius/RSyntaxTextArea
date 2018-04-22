@@ -275,14 +275,14 @@ public class PlainTextTokenMaker extends AbstractJFlexTokenMaker {
 	 * tokens in properties files.
 	 *
 	 * @param text The line of tokens to examine.
-	 * @param initialTokenType The token type to start with (i.e., the value
-	 *        of <code>getLastTokenTypeOnLine</code> for the line before
+	 * @param initialToken The token type to start with (i.e., the value
+	 *        of <code>getLastTokenOnLine</code> for the line before
 	 *        <code>text</code>).
 	 * @return <code>Token.NULL</code>.
 	 */
 	@Override
-	public int getLastTokenTypeOnLine(Segment text, int initialTokenType) {
-		return Token.NULL;
+	public Token getLastTokenOnLine(Segment text, Token initialToken) {
+		return null;
 	}
 
 
@@ -318,14 +318,14 @@ public class PlainTextTokenMaker extends AbstractJFlexTokenMaker {
 	 * subclasses so they can correctly implement syntax highlighting.
 	 *
 	 * @param text The text from which to get tokens.
-	 * @param initialTokenType The token type we should start with.
+	 * @param initialToken The token type we should start with.
 	 * @param startOffset The offset into the document at which
 	 *        <code>text</code> starts.
 	 * @return The first <code>Token</code> in a linked list representing
 	 *         the syntax highlighted text.
 	 */
 	@Override
-	public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
+	public Token getTokenList(Segment text, Token initialToken, int startOffset) {
 
 		resetTokenList();
 		this.offsetShift = -text.offset + startOffset;

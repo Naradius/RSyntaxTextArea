@@ -417,14 +417,14 @@ public class DtdTokenMaker extends AbstractJFlexTokenMaker {
 	 * subclasses so they can correctly implement syntax highlighting.
 	 *
 	 * @param text The text from which to get tokens.
-	 * @param initialTokenType The token type we should start with.
+	 * @param initialToken The token type we should start with.
 	 * @param startOffset The offset into the document at which
 	 *        <code>text</code> starts.
 	 * @return The first <code>Token</code> in a linked list representing
 	 *         the syntax highlighted text.
 	 */
 	@Override
-	public Token getTokenList(Segment text, int initialTokenType, int startOffset) {
+	public Token getTokenList(Segment text, Token initialToken, int startOffset) {
 
 		resetTokenList();
 		this.offsetShift = -text.offset + startOffset;
@@ -432,7 +432,7 @@ public class DtdTokenMaker extends AbstractJFlexTokenMaker {
 
 		// Start off in the proper state.
 		int state = YYINITIAL;
-		switch (initialTokenType) {
+		switch (initialToken.getType()) {
 			case INTERNAL_INTAG_START:
 				state = INTAG_START;
 				break;
@@ -443,15 +443,15 @@ public class DtdTokenMaker extends AbstractJFlexTokenMaker {
 				state = INTAG_ATTLIST;
 				break;
 			default:
-				if (initialTokenType<-1024) { // INTERNAL_IN_COMMENT - prevState
-					int main = -(-initialTokenType & 0xffffff00);
+				if (initialToken.getType()<-1024) { // INTERNAL_IN_COMMENT - prevState
+					int main = -(-initialToken.getType() & 0xffffff00);
 					switch (main) {
 						default: // Should never happen
 						case INTERNAL_IN_COMMENT:
 							state = COMMENT;
 							break;
 					}
-					prevState = -initialTokenType&0xff;
+					prevState = -initialToken.getType()&0xff;
 				}
 				else { // Shouldn't happen
 					state = YYINITIAL;

@@ -17,7 +17,7 @@ import javax.swing.text.Segment;
  * @author Robert Futrell
  * @version 0.1
  */
-interface TokenFactory {
+public interface TokenFactory {
 
 
 	/**

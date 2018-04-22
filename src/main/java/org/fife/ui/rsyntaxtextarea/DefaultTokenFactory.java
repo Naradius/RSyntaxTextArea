@@ -28,12 +28,12 @@ import javax.swing.text.Segment;
  * @author Robert Futrell
  * @version 0.1
  */
-class DefaultTokenFactory implements TokenFactory {
+public class DefaultTokenFactory implements TokenFactory {
 
-	private int size;
-	private int increment;
-	private TokenImpl[] tokenList;
-	private int currentFreeToken;
+	protected int size;
+	protected int increment;
+	protected TokenImpl[] tokenList;
+	protected int currentFreeToken;
 
 	protected static final int DEFAULT_START_SIZE	= 30;
 	protected static final int DEFAULT_INCREMENT		= 10;
@@ -42,7 +42,7 @@ class DefaultTokenFactory implements TokenFactory {
 	/**
 	 * Constructor.
 	 */
-	DefaultTokenFactory() {
+	public DefaultTokenFactory() {
 		this(DEFAULT_START_SIZE, DEFAULT_INCREMENT);
 	}
 
@@ -54,7 +54,7 @@ class DefaultTokenFactory implements TokenFactory {
 	 * @param increment How many tokens to increment by when the stack gets
 	 *        empty.
 	 */
-	DefaultTokenFactory(int size, int increment) {
+	public DefaultTokenFactory(int size, int increment) {
 
 		this.size = size;
 		this.increment = increment;
@@ -73,7 +73,7 @@ class DefaultTokenFactory implements TokenFactory {
 	 * Adds tokens to the internal token list.  This is called whenever a
 	 * request is made and no more tokens are available.
 	 */
-	private void augmentTokenList() {
+	protected void augmentTokenList() {
 		TokenImpl[] temp = new TokenImpl[size + increment];
 		System.arraycopy(tokenList,0, temp,0, size);
 		size += increment;

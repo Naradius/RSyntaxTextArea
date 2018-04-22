@@ -290,7 +290,7 @@ public class TokenImpl implements Token {
 
 	@Override
 	public boolean containsPosition(int pos) {
-		return pos>=getOffset() && pos<getOffset()+textCount;
+		return pos>=getOffset() && pos<=getOffset()+textCount;
 	}
 
 
@@ -743,11 +743,13 @@ public class TokenImpl implements Token {
 				rect.x = stableX + w;
 				end = token.documentToToken(pos);
 
-				if (text[end] == '\t') {
-					rect.width = fm.charWidth(' ');
-				}
-				else {
-					rect.width = fm.charWidth(text[end]);
+				try {
+					if (text[end] == '\t') {
+						rect.width = fm.charWidth(' ');
+					} else {
+						rect.width = fm.charWidth(text[end]);
+					}
+				} catch (Exception ex) {
 				}
 
 				return rect;
@@ -795,7 +797,7 @@ public class TokenImpl implements Token {
 	 * @see #moveOffset(int)
 	 */
 	public void makeStartAt(int pos) {
-		if (pos<getOffset() || pos>=(getOffset()+textCount)) {
+		if (pos<getOffset() || pos>(getOffset()+textCount)) {
 			throw new IllegalArgumentException("pos " + pos +
 				" is not in range " + getOffset() + "-" + (getOffset()+textCount-1));
 		}
